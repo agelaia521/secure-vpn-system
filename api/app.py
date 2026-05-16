@@ -16,14 +16,14 @@ from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from secure_vpn.crypto.aes_cipher import AESCipher, KeyDerivation
-from secure_vpn.crypto.rsa_cipher import RSACipher
-from secure_vpn.crypto.hash_mac import HashMAC
-from secure_vpn.security.digital_signature import DigitalSignature
-from secure_vpn.security.certificate import CertificateAuthority
-from secure_vpn.security.key_exchange import DHKeyExchange
-from secure_vpn.security.integrity import IntegrityChecker, AntiReplayWindow, SessionKeyManager
-from secure_vpn.tunnel.tunnel_protocol import TunnelProtocol
+from crypto.aes_cipher import AESCipher, KeyDerivation
+from crypto.rsa_cipher import RSACipher
+from crypto.hash_mac import HashMAC
+from security.digital_signature import DigitalSignature
+from security.certificate import CertificateAuthority
+from security.key_exchange import DHKeyExchange
+from security.integrity import IntegrityChecker, AntiReplayWindow, SessionKeyManager
+from tunnel.tunnel_protocol import TunnelProtocol
 
 app = FastAPI(title="安全VPN通信系统", version="2.0",
              description="轻量级安全VPN通信系统 - 包含密码算法、安全技术、VPN隧道")
@@ -444,224 +444,554 @@ HTML_CONTENT = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>安全VPN通信系统 - 功能演示</title>
+<title>Secure VPN System</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--accent:#3b82f6;--accent2:#10b981;--danger:#ef4444;--warn:#f59e0b}
-body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
-.container{max-width:1200px;margin:0 auto;padding:20px}
-h1{text-align:center;font-size:28px;margin:20px 0 5px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.subtitle{text-align:center;color:var(--muted);margin-bottom:30px;font-size:14px}
-.tabs{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap;border-bottom:2px solid var(--border);padding-bottom:8px}
-.tab{padding:8px 16px;border-radius:8px 8px 0 0;cursor:pointer;background:var(--card);color:var(--muted);border:1px solid var(--border);font-size:13px;transition:all .2s}
-.tab:hover,.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.panel{display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px}
-.panel.active{display:block}
-.panel h3{font-size:18px;margin-bottom:16px;color:var(--accent)}
-.form-row{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start}
-.form-row label{min-width:100px;font-size:13px;color:var(--muted);padding-top:8px}
-textarea,input[type=text]{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;font-family:inherit;resize:vertical}
-textarea{min-height:80px}
-button{padding:10px 24px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:#2563eb}
-.btn-success{background:var(--accent2);color:#fff}
-.btn-success:hover{background:#059669}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-warn{background:var(--warn);color:#000}
-.btn-sm{padding:6px 14px;font-size:12px}
-.result{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:12px;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;color:#a5f3fc}
-.result.error{border-color:var(--danger);color:#fca5a5}
-.result.success{border-color:var(--accent2);color:#6ee7b7}
-.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600}
-.badge-ok{background:#065f46;color:#6ee7b7}
-.badge-fail{background:#7f1d1d;color:#fca5a5}
-.badge-info{background:#1e3a5f;color:#93c5fd}
-.btn-group{display:flex;gap:8px;flex-wrap:wrap}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.stat-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px}
-.stat-card .label{font-size:12px;color:var(--muted);margin-bottom:4px}
-.stat-card .value{font-size:16px;font-weight:700;color:var(--accent)}
-.flow-step{background:var(--bg);border-left:3px solid var(--accent);padding:10px 16px;margin-bottom:8px;border-radius:0 8px 8px 0;font-size:13px}
-.flow-step .step-num{color:var(--accent);font-weight:700;margin-right:8px}
-@media(max-width:768px){.two-col{grid-template-columns:1fr}.form-row{flex-direction:column}.form-row label{min-width:auto}}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+::-webkit-scrollbar { display: none; }
+html { -ms-overflow-style: none; scrollbar-width: none; }
+
+:root {
+  --bg: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --border: #d0d7de;
+  --text: #24292f;
+  --text-muted: #57606a;
+  --accent: #0969da;
+  --accent-hover: #0550ae;
+  --success: #1a7f37;
+  --error: #cf222e;
+  --code-bg: #f6f8fa;
+  --code-text: #24292f;
+}
+
+body {
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  background: var(--bg-secondary);
+}
+
+.tab {
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--bg);
+}
+
+.panels {
+  padding: 16px;
+}
+
+.panel {
+  display: none;
+}
+
+.panel.active {
+  display: block;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.panel-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.form-row {
+  margin-bottom: 12px;
+}
+
+.form-row label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: 'Roboto', monospace;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+textarea:focus,
+input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  transition: color 0.2s ease;
+}
+
+.btn:hover {
+  color: var(--accent-hover);
+}
+
+.result-container {
+  position: relative;
+  margin-top: 12px;
+}
+
+.result {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--code-text);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.result.error {
+  border-color: var(--error);
+}
+
+.result.success {
+  border-color: var(--success);
+}
+
+.copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.result-container:hover .copy-btn {
+  opacity: 1;
+}
+
+.copy-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 8px 16px;
+  font-size: 12px;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.col {
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+
+.col-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: var(--text-muted);
+}
+
+@media(max-width:768px) {
+  .two-col { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
-<div class="container">
-<h1>🔐 安全VPN通信系统</h1>
-<p class="subtitle">轻量级安全VPN通信系统功能演示 — AES-GCM · RSA · 数字签名 · 数字证书 · DH密钥交换 · 防重放 · VPN隧道</p>
-
 <div class="tabs">
-<div class="tab active" onclick="showPanel('aes')">🔐 AES加密</div>
-<div class="tab" onclick="showPanel('rsa')">🔑 RSA加密</div>
-<div class="tab" onclick="showPanel('hash')">📝 哈希/HMAC</div>
-<div class="tab" onclick="showPanel('kdf')">🧪 密钥派生</div>
-<div class="tab" onclick="showPanel('sign')">✍️ 数字签名</div>
-<div class="tab" onclick="showPanel('cert')">📜 数字证书</div>
-<div class="tab" onclick="showPanel('dh')">🔄 DH密钥交换</div>
-<div class="tab" onclick="showPanel('replay')">🛡️ 防重放</div>
-<div class="tab" onclick="showPanel('keymgr')">🔑 密钥轮换</div>
-<div class="tab" onclick="showPanel('tunnel')">🌐 VPN隧道</div>
-<div class="tab" onclick="showPanel('flow')">🚀 完整流程</div>
+<div class="tab active" onclick="showPanel('aes-cbc')">AES-CBC</div>
+<div class="tab" onclick="showPanel('aes-gcm')">AES-GCM</div>
+<div class="tab" onclick="showPanel('rsa')">RSA</div>
+<div class="tab" onclick="showPanel('hash')">SHA-256</div>
+<div class="tab" onclick="showPanel('hmac')">HMAC</div>
+<div class="tab" onclick="showPanel('hkdf')">HKDF</div>
+<div class="tab" onclick="showPanel('pbkdf2')">PBKDF2</div>
+<div class="tab" onclick="showPanel('sign')">数字签名</div>
+<div class="tab" onclick="showPanel('cert')">数字证书</div>
+<div class="tab" onclick="showPanel('crl')">CRL</div>
+<div class="tab" onclick="showPanel('dh')">DH密钥交换</div>
+<div class="tab" onclick="showPanel('replay')">防重放</div>
+<div class="tab" onclick="showPanel('keymgr')">密钥轮换</div>
+<div class="tab" onclick="showPanel('tunnel-gcm')">GCM隧道</div>
+<div class="tab" onclick="showPanel('tunnel-cbc')">CBC隧道</div>
+<div class="tab" onclick="showPanel('flow')">完整流程</div>
 </div>
 
-<!-- AES -->
-<div id="panel-aes" class="panel active">
-<h3>AES-256 对称加密 (CBC / GCM)</h3>
-<div class="two-col">
-<div>
-<h4 style="margin-bottom:8px;font-size:14px;color:var(--accent2)">CBC 模式</h4>
-<div class="form-row"><label>明文</label><textarea id="aes-cbc-pt" placeholder="输入要加密的文本...">这是一条通过VPN隧道加密传输的机密消息！</textarea></div>
-<div class="btn-group"><button class="btn-primary" onclick="aesCbcEncrypt()">CBC 加密</button></div>
+<div class="panels">
+
+<!-- AES-CBC -->
+<div id="panel-aes-cbc" class="panel active">
+<div class="panel-title">AES-256-CBC 加密</div>
+<div class="panel-desc">CBC模式对称加密，使用随机IV</div>
+<div class="form-row">
+<label>明文</label>
+<textarea id="aes-cbc-pt">这是一条通过VPN隧道加密传输的机密消息！</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="aesCbcEncrypt()">加密</button>
+</div>
+<div class="result-container">
 <div id="aes-cbc-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('aes-cbc-result')">复制</button>
 </div>
-<div>
-<h4 style="margin-bottom:8px;font-size:14px;color:var(--accent2)">GCM 模式（认证加密）</h4>
-<div class="form-row"><label>明文</label><textarea id="aes-gcm-pt" placeholder="输入要加密的文本...">这是一条通过VPN隧道加密传输的机密消息！</textarea></div>
-<div class="form-row"><label>AAD</label><input type="text" id="aes-gcm-aad" value="VPN-Tunnel-Packet-v2" placeholder="附加认证数据"></div>
-<div class="btn-group"><button class="btn-primary" onclick="aesGcmEncrypt()">GCM 加密</button></div>
+</div>
+
+<!-- AES-GCM -->
+<div id="panel-aes-gcm" class="panel">
+<div class="panel-title">AES-256-GCM 认证加密</div>
+<div class="panel-desc">GCM模式提供加密和完整性认证</div>
+<div class="form-row">
+<label>明文</label>
+<textarea id="aes-gcm-pt">这是一条通过VPN隧道加密传输的机密消息！</textarea>
+</div>
+<div class="form-row">
+<label>AAD（附加认证数据）</label>
+<input type="text" id="aes-gcm-aad" value="VPN-Tunnel-Packet-v2">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="aesGcmEncrypt()">加密</button>
+</div>
+<div class="result-container">
 <div id="aes-gcm-result" class="result" style="display:none"></div>
-</div>
+<button class="copy-btn" onclick="copyResult('aes-gcm-result')">复制</button>
 </div>
 </div>
 
 <!-- RSA -->
 <div id="panel-rsa" class="panel">
-<h3>RSA-2048 非对称加密</h3>
-<div class="btn-group" style="margin-bottom:16px"><button class="btn-success" onclick="rsaGenKeys()">生成RSA密钥对</button></div>
-<div class="form-row"><label>明文</label><textarea id="rsa-pt" placeholder="输入要加密的文本...">Hello VPN! RSA-2048-OAEP握手消息</textarea></div>
-<div class="btn-group"><button class="btn-primary" onclick="rsaEncrypt()">加密</button> <button class="btn-warn" onclick="rsaDecrypt()">解密</button></div>
+<div class="panel-title">RSA-2048 非对称加密</div>
+<div class="panel-desc">使用OAEP填充的RSA加密</div>
+<div class="btn-group">
+<button class="btn" onclick="rsaGenKeys()">生成密钥对</button>
+</div>
+<div class="form-row">
+<label>明文</label>
+<textarea id="rsa-pt">Hello VPN! RSA-2048-OAEP握手消息</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="rsaEncrypt()">加密</button>
+<button class="btn" onclick="rsaDecrypt()">解密</button>
+</div>
+<div class="result-container">
 <div id="rsa-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('rsa-result')">复制</button>
+</div>
 </div>
 
-<!-- Hash/HMAC -->
+<!-- SHA-256 -->
 <div id="panel-hash" class="panel">
-<h3>SHA-256 哈希与 HMAC-SHA256</h3>
-<div class="two-col">
-<div>
-<h4 style="margin-bottom:8px;font-size:14px;color:var(--accent2)">SHA-256 哈希</h4>
-<div class="form-row"><label>数据</label><textarea id="hash-data" placeholder="输入数据...">VPN隧道数据包内容</textarea></div>
-<div class="btn-group"><button class="btn-primary" onclick="sha256Hash()">计算哈希</button> <button class="btn-success" onclick="multiHash()">多算法对比</button></div>
+<div class="panel-title">SHA-256 哈希</div>
+<div class="panel-desc">计算消息的SHA-256哈希值</div>
+<div class="form-row">
+<label>数据</label>
+<textarea id="hash-data">VPN隧道数据包内容</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="sha256Hash()">计算哈希</button>
+<button class="btn" onclick="multiHash()">多算法</button>
+</div>
+<div class="result-container">
 <div id="hash-result" class="result" style="display:none"></div>
-</div>
-<div>
-<h4 style="margin-bottom:8px;font-size:14px;color:var(--accent2)">HMAC-SHA256</h4>
-<div class="form-row"><label>数据</label><textarea id="hmac-data" placeholder="输入数据...">VPN隧道数据包内容</textarea></div>
-<div class="btn-group"><button class="btn-primary" onclick="hmacGenerate()">生成HMAC</button></div>
-<div id="hmac-result" class="result" style="display:none"></div>
-</div>
+<button class="copy-btn" onclick="copyResult('hash-result')">复制</button>
 </div>
 </div>
 
-<!-- KDF -->
-<div id="panel-kdf" class="panel">
-<h3>密钥派生函数</h3>
-<div class="two-col">
-<div>
-<h4 style="margin-bottom:8px;font-size:14px;color:var(--accent2)">HKDF 密钥派生</h4>
-<div class="form-row"><label>上下文信息</label><input type="text" id="hkdf-info" value="vpn-session"></div>
-<div class="btn-group"><button class="btn-primary" onclick="hkdfDerive()">派生子密钥</button></div>
+<!-- HMAC -->
+<div id="panel-hmac" class="panel">
+<div class="panel-title">HMAC-SHA256 消息认证</div>
+<div class="panel-desc">使用密钥生成消息认证码</div>
+<div class="form-row">
+<label>数据</label>
+<textarea id="hmac-data">VPN隧道数据包内容</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="hmacGenerate()">生成HMAC</button>
+</div>
+<div class="result-container">
+<div id="hmac-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('hmac-result')">复制</button>
+</div>
+</div>
+
+<!-- HKDF -->
+<div id="panel-hkdf" class="panel">
+<div class="panel-title">HKDF 密钥派生</div>
+<div class="panel-desc">从主密钥派生出多个子密钥</div>
+<div class="form-row">
+<label>上下文信息</label>
+<input type="text" id="hkdf-info" value="vpn-session">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="hkdfDerive()">派生</button>
+</div>
+<div class="result-container">
 <div id="hkdf-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('hkdf-result')">复制</button>
 </div>
-<div>
-<h4 style="margin-bottom:8px;font-size:14px;color:var(--accent2)">PBKDF2 密码派生</h4>
-<div class="form-row"><label>密码</label><input type="text" id="pbkdf2-pwd" value="MySecurePassword123"></div>
-<div class="form-row"><label>迭代次数</label><input type="text" id="pbkdf2-iter" value="100000"></div>
-<div class="btn-group"><button class="btn-primary" onclick="pbkdf2Derive()">派生密钥</button></div>
+</div>
+
+<!-- PBKDF2 -->
+<div id="panel-pbkdf2" class="panel">
+<div class="panel-title">PBKDF2 密码派生</div>
+<div class="panel-desc">从密码安全地派生出加密密钥</div>
+<div class="form-row">
+<label>密码</label>
+<input type="text" id="pbkdf2-pwd" value="MySecurePassword123">
+</div>
+<div class="form-row">
+<label>迭代次数</label>
+<input type="text" id="pbkdf2-iter" value="100000">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="pbkdf2Derive()">派生</button>
+</div>
+<div class="result-container">
 <div id="pbkdf2-result" class="result" style="display:none"></div>
-</div>
-</div>
-<div style="margin-top:16px">
-<h4 style="margin-bottom:8px;font-size:14px;color:var(--accent2)">TLS 1.3 风格会话密钥派生</h4>
-<div class="btn-group"><button class="btn-success" onclick="sessionKeysDerive()">一键派生会话密钥</button></div>
-<div id="session-keys-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('pbkdf2-result')">复制</button>
 </div>
 </div>
 
 <!-- 数字签名 -->
 <div id="panel-sign" class="panel">
-<h3>RSA-PSS 数字签名</h3>
-<div class="btn-group" style="margin-bottom:16px"><button class="btn-success" onclick="dsGenKeys()">生成签名密钥对</button></div>
-<div class="form-row"><label>待签名数据</label><textarea id="sign-data" placeholder="输入要签名的数据...">VPN认证数据 - 身份确认</textarea></div>
-<div class="btn-group"><button class="btn-primary" onclick="dsSign()">签名</button> <button class="btn-warn" onclick="dsVerify()">验证签名</button> <button class="btn-danger" onclick="dsTamperVerify()">篡改后验证</button></div>
+<div class="panel-title">RSA-PSS 数字签名</div>
+<div class="panel-desc">使用私钥签名，公钥验证</div>
+<div class="btn-group">
+<button class="btn" onclick="dsGenKeys()">生成密钥</button>
+</div>
+<div class="form-row">
+<label>数据</label>
+<textarea id="sign-data">VPN认证数据 - 身份确认</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="dsSign()">签名</button>
+<button class="btn" onclick="dsVerify()">验证</button>
+<button class="btn" onclick="dsTamperVerify()">篡改验证</button>
+</div>
+<div class="result-container">
 <div id="sign-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('sign-result')">复制</button>
+</div>
 </div>
 
 <!-- 数字证书 -->
 <div id="panel-cert" class="panel">
-<h3>数字证书与CRL吊销列表</h3>
-<div class="form-row"><label>证书主题</label><input type="text" id="cert-subject" value="VPN-Server-01"></div>
-<div class="btn-group">
-<button class="btn-primary" onclick="certIssue()">签发证书</button>
-<button class="btn-warn" onclick="certList()">查看所有证书</button>
-<button class="btn-danger" onclick="certRevokeLast()">吊销最后签发的证书</button>
-<button class="btn-success" onclick="certShowCRL()">查看CRL</button>
+<div class="panel-title">X.509 数字证书</div>
+<div class="panel-desc">CA签发和验证数字证书</div>
+<div class="form-row">
+<label>证书主题</label>
+<input type="text" id="cert-subject" value="VPN-Server-01">
 </div>
+<div class="btn-group">
+<button class="btn" onclick="certIssue()">签发</button>
+<button class="btn" onclick="certList()">列表</button>
+<button class="btn" onclick="certRevokeLast()">吊销</button>
+</div>
+<div class="result-container">
 <div id="cert-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('cert-result')">复制</button>
+</div>
 </div>
 
-<!-- DH -->
-<div id="panel-dh" class="panel">
-<h3>Diffie-Hellman 密钥交换</h3>
-<div class="btn-group" style="margin-bottom:16px">
-<button class="btn-primary" onclick="dhGenClient()">生成客户端密钥</button>
-<button class="btn-primary" onclick="dhGenServer()">生成服务端密钥</button>
-<button class="btn-success" onclick="dhCompute()">计算共享密钥</button>
+<!-- CRL -->
+<div id="panel-crl" class="panel">
+<div class="panel-title">CRL 证书吊销列表</div>
+<div class="panel-desc">管理已吊销的证书</div>
+<div class="btn-group">
+<button class="btn" onclick="certShowCRL()">查看CRL</button>
 </div>
+<div class="result-container">
+<div id="crl-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('crl-result')">复制</button>
+</div>
+</div>
+
+<!-- DH密钥交换 -->
+<div id="panel-dh" class="panel">
+<div class="panel-title">Diffie-Hellman 密钥交换</div>
+<div class="panel-desc">双方在不安全信道上协商共享密钥</div>
+<div class="btn-group">
+<button class="btn" onclick="dhGenClient()">客户端密钥</button>
+<button class="btn" onclick="dhGenServer()">服务端密钥</button>
+<button class="btn" onclick="dhCompute()">计算共享密钥</button>
+</div>
+<div class="result-container">
 <div id="dh-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('dh-result')">复制</button>
+</div>
 </div>
 
 <!-- 防重放 -->
 <div id="panel-replay" class="panel">
-<h3>防重放攻击滑动窗口</h3>
-<div class="form-row"><label>序列号</label><input type="text" id="replay-seq" value="1" placeholder="输入序列号"></div>
-<div class="btn-group">
-<button class="btn-primary" onclick="replayCheck()">检查序列号</button>
-<button class="btn-success" onclick="replayBatch()">批量测试(乱序)</button>
-<button class="btn-danger" onclick="replayAttack()">模拟重放攻击</button>
-<button class="btn-warn" onclick="replayReset()">重置窗口</button>
+<div class="panel-title">防重放攻击滑动窗口</div>
+<div class="panel-desc">使用滑动窗口机制检测重放攻击</div>
+<div class="form-row">
+<label>序列号</label>
+<input type="text" id="replay-seq" value="1">
 </div>
+<div class="btn-group">
+<button class="btn" onclick="replayCheck()">检查</button>
+<button class="btn" onclick="replayBatch()">批量测试</button>
+<button class="btn" onclick="replayAttack()">模拟重放</button>
+<button class="btn" onclick="replayReset()">重置</button>
+</div>
+<div class="result-container">
 <div id="replay-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('replay-result')">复制</button>
+</div>
 </div>
 
 <!-- 密钥轮换 -->
 <div id="panel-keymgr" class="panel">
-<h3>会话密钥轮换</h3>
-<div class="btn-group" style="margin-bottom:16px">
-<button class="btn-success" onclick="kmInit()">初始化密钥</button>
-<button class="btn-primary" onclick="kmRotate()">轮换密钥</button>
-<button class="btn-warn" onclick="kmStatus()">查看状态</button>
+<div class="panel-title">会话密钥轮换</div>
+<div class="panel-desc">定期轮换会话密钥增强安全性</div>
+<div class="btn-group">
+<button class="btn" onclick="kmInit()">初始化</button>
+<button class="btn" onclick="kmRotate()">轮换</button>
+<button class="btn" onclick="kmStatus()">状态</button>
 </div>
+<div class="result-container">
 <div id="keymgr-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('keymgr-result')">复制</button>
+</div>
 </div>
 
-<!-- VPN隧道 -->
-<div id="panel-tunnel" class="panel">
-<h3>VPN隧道封装/解封装</h3>
-<div class="two-col">
-<div>
-<div class="form-row"><label>载荷</label><textarea id="tunnel-payload" placeholder="输入要封装的数据...">这是一条通过VPN安全隧道传输的用户数据包</textarea></div>
-<div class="form-row"><label>源IP</label><input type="text" id="tunnel-src" value="10.0.0.2"></div>
-<div class="form-row"><label>目的IP</label><input type="text" id="tunnel-dst" value="10.0.0.1"></div>
-<div class="form-row"><label>加密模式</label>
-<div class="btn-group"><button class="btn-primary btn-sm" onclick="tunnelEnc('GCM')">GCM</button> <button class="btn-warn btn-sm" onclick="tunnelEnc('CBC')">CBC</button></div>
+<!-- GCM隧道 -->
+<div id="panel-tunnel-gcm" class="panel">
+<div class="panel-title">VPN隧道 (GCM模式)</div>
+<div class="panel-desc">使用AES-GCM加密的VPN隧道</div>
+<div class="form-row">
+<label>载荷</label>
+<textarea id="tunnel-gcm-payload">这是一条通过VPN安全隧道传输的用户数据包</textarea>
+</div>
+<div class="form-row">
+<label>源IP</label>
+<input type="text" id="tunnel-gcm-src" value="10.0.0.2">
+</div>
+<div class="form-row">
+<label>目的IP</label>
+<input type="text" id="tunnel-gcm-dst" value="10.0.0.1">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="tunnelEnc('GCM')">封装</button>
+<button class="btn" onclick="tunnelStats()">统计</button>
+</div>
+<div class="result-container">
+<div id="tunnel-gcm-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('tunnel-gcm-result')">复制</button>
 </div>
 </div>
-<div>
-<h4 style="margin-bottom:8px;font-size:14px;color:var(--accent2)">隧道状态</h4>
-<div class="btn-group" style="margin-bottom:12px"><button class="btn-success" onclick="tunnelStats()">查看统计</button></div>
-<div id="tunnel-result" class="result" style="display:none"></div>
+
+<!-- CBC隧道 -->
+<div id="panel-tunnel-cbc" class="panel">
+<div class="panel-title">VPN隧道 (CBC模式)</div>
+<div class="panel-desc">使用AES-CBC加密的VPN隧道</div>
+<div class="form-row">
+<label>载荷</label>
+<textarea id="tunnel-cbc-payload">这是一条通过VPN安全隧道传输的用户数据包</textarea>
 </div>
+<div class="form-row">
+<label>源IP</label>
+<input type="text" id="tunnel-cbc-src" value="10.0.0.2">
+</div>
+<div class="form-row">
+<label>目的IP</label>
+<input type="text" id="tunnel-cbc-dst" value="10.0.0.1">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="tunnelEnc('CBC')">封装</button>
+<button class="btn" onclick="tunnelStats()">统计</button>
+</div>
+<div class="result-container">
+<div id="tunnel-cbc-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('tunnel-cbc-result')">复制</button>
 </div>
 </div>
 
 <!-- 完整流程 -->
 <div id="panel-flow" class="panel">
-<h3>🚀 一键演示完整VPN安全通信流程</h3>
-<div class="btn-group" style="margin-bottom:20px"><button class="btn-success" onclick="runFullFlow()" style="padding:14px 32px;font-size:16px">▶ 运行完整演示</button></div>
+<div class="panel-title">完整VPN安全通信流程</div>
+<div class="panel-desc">一键演示从密钥交换到加密通信的完整流程</div>
+<div class="btn-group">
+<button class="btn" onclick="runFullFlow()">运行完整演示</button>
+</div>
+<div class="result-container">
 <div id="flow-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('flow-result')">复制</button>
+</div>
 </div>
 
 </div>
@@ -693,19 +1023,41 @@ function showResult(id, data, isError=false) {
   el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
 }
 
-// ==================== AES ====================
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+async function copyResult(id) {
+  const el = document.getElementById(id);
+  if (el.style.display === 'none') return;
+  try {
+    await navigator.clipboard.writeText(el.textContent);
+    showToast('已复制');
+  } catch(e) {
+    showToast('复制失败');
+  }
+}
+
+// ==================== AES-CBC ====================
 async function aesCbcEncrypt() {
   try {
     const r = await api('/api/aes/encrypt-cbc', 'POST', {plaintext: document.getElementById('aes-cbc-pt').value});
-    showResult('aes-cbc-result', '✅ CBC加密成功\\n\\n密钥: ' + r.key_hex.substring(0,32) + '...\\n密文: ' + r.ciphertext.substring(0,64) + '...');
-  } catch(e) { showResult('aes-cbc-result', '❌ ' + e.message, true); }
+    showResult('aes-cbc-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('aes-cbc-result', e.message, true); }
 }
 
+// ==================== AES-GCM ====================
 async function aesGcmEncrypt() {
   try {
-    const r = await api('/api/aes/encrypt-gcm', 'POST', {plaintext: document.getElementById('aes-gcm-pt').value});
-    showResult('aes-gcm-result', '✅ GCM加密成功\\n\\n密钥: ' + r.key_hex.substring(0,32) + '...\\n密文: ' + r.ciphertext.substring(0,64) + '...');
-  } catch(e) { showResult('aes-gcm-result', '❌ ' + e.message, true); }
+    const r = await api('/api/aes/encrypt-gcm', 'POST', {
+      plaintext: document.getElementById('aes-gcm-pt').value,
+      aad: document.getElementById('aes-gcm-aad').value
+    });
+    showResult('aes-gcm-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('aes-gcm-result', e.message, true); }
 }
 
 // ==================== RSA ====================
@@ -713,77 +1065,67 @@ async function rsaGenKeys() {
   try {
     const r = await api('/api/rsa/generate-keypair');
     rsaKeys = true;
-    showResult('rsa-result', '✅ RSA-2048密钥对已生成\\n\\n公钥:\\n' + r.public_key_pem.substring(0,100) + '...');
-  } catch(e) { showResult('rsa-result', '❌ ' + e.message, true); }
+    showResult('rsa-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('rsa-result', e.message, true); }
 }
 
 async function rsaEncrypt() {
   try {
     if (!rsaKeys) await rsaGenKeys();
     const r = await api('/api/rsa/encrypt', 'POST', {plaintext: document.getElementById('rsa-pt').value});
-    showResult('rsa-result', '✅ RSA加密成功\\n\\n密文: ' + r.ciphertext.substring(0,64) + '...');
-  } catch(e) { showResult('rsa-result', '❌ ' + e.message, true); }
+    showResult('rsa-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('rsa-result', e.message, true); }
 }
 
 async function rsaDecrypt() {
   try {
     if (!rsaKeys) throw new Error('请先生成密钥对');
-    const encResult = JSON.parse(document.getElementById('rsa-result').textContent);
-    // 需要先加密才能解密
     const r = await api('/api/rsa/encrypt', 'POST', {plaintext: document.getElementById('rsa-pt').value});
     const d = await api('/api/rsa/decrypt', 'POST', r.ciphertext);
-    showResult('rsa-result', '✅ RSA解密成功\\n\\n原文: ' + d.plaintext);
-  } catch(e) { showResult('rsa-result', '❌ ' + e.message, true); }
+    showResult('rsa-result', JSON.stringify(d, null, 2));
+  } catch(e) { showResult('rsa-result', e.message, true); }
 }
 
-// ==================== Hash/HMAC ====================
+// ==================== SHA-256 ====================
 async function sha256Hash() {
   try {
     const r = await api('/api/hash/sha256', 'POST', {data: document.getElementById('hash-data').value});
-    showResult('hash-result', '✅ SHA-256: ' + r.hash);
-  } catch(e) { showResult('hash-result', '❌ ' + e.message, true); }
+    showResult('hash-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('hash-result', e.message, true); }
 }
 
 async function multiHash() {
   try {
     const r = await api('/api/hash/multi', 'POST', {data: document.getElementById('hash-data').value});
-    let s = '✅ 多算法哈希对比\\n\\n';
-    for (const [k,v] of Object.entries(r)) s += k + ': ' + v + '\\n';
-    showResult('hash-result', s);
-  } catch(e) { showResult('hash-result', '❌ ' + e.message, true); }
+    showResult('hash-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('hash-result', e.message, true); }
 }
 
+// ==================== HMAC ====================
 async function hmacGenerate() {
   try {
     const r = await api('/api/hmac/generate', 'POST', {data: document.getElementById('hmac-data').value});
-    showResult('hmac-result', '✅ HMAC-SHA256生成成功\\n\\nHMAC: ' + r.hmac + '\\n密钥: ' + r.key_hex.substring(0,32) + '...');
-  } catch(e) { showResult('hmac-result', '❌ ' + e.message, true); }
+    showResult('hmac-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('hmac-result', e.message, true); }
 }
 
-// ==================== KDF ====================
+// ==================== HKDF ====================
 async function hkdfDerive() {
   try {
     const r = await api('/api/kdf/hkdf', 'POST', {info: document.getElementById('hkdf-info').value});
-    let s = '✅ HKDF密钥派生成功\\n\\n主密钥: ' + r.master_key_hex.substring(0,32) + '...\\n\\n子密钥:\\n';
-    for (const [k,v] of Object.entries(r.sub_keys)) s += '  ' + k + ': ' + v + '\\n';
-    showResult('hkdf-result', s);
-  } catch(e) { showResult('hkdf-result', '❌ ' + e.message, true); }
+    showResult('hkdf-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('hkdf-result', e.message, true); }
 }
 
+// ==================== PBKDF2 ====================
 async function pbkdf2Derive() {
   try {
-    const r = await api('/api/kdf/pbkdf2', 'POST', {password: document.getElementById('pbkdf2-pwd').value, iterations: parseInt(document.getElementById('pbkdf2-iter').value)});
-    showResult('pbkdf2-result', '✅ PBKDF2密钥派生成功\\n\\n派生密钥: ' + r.derived_key_hex.substring(0,32) + '...\\n盐值: ' + r.salt_hex + '\\n迭代次数: ' + r.iterations);
-  } catch(e) { showResult('pbkdf2-result', '❌ ' + e.message, true); }
-}
-
-async function sessionKeysDerive() {
-  try {
-    const r = await api('/api/kdf/session-keys');
-    let s = '✅ TLS 1.3风格会话密钥派生\\n\\n共享密钥: ' + r.dh_shared_key_preview + '\\n\\n';
-    for (const [k,v] of Object.entries(r.session_keys_preview)) s += k + ': ' + v + '\\n';
-    showResult('session-keys-result', s);
-  } catch(e) { showResult('session-keys-result', '❌ ' + e.message, true); }
+    const r = await api('/api/kdf/pbkdf2', 'POST', {
+      password: document.getElementById('pbkdf2-pwd').value,
+      iterations: parseInt(document.getElementById('pbkdf2-iter').value)
+    });
+    showResult('pbkdf2-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('pbkdf2-result', e.message, true); }
 }
 
 // ==================== 数字签名 ====================
@@ -791,8 +1133,8 @@ async function dsGenKeys() {
   try {
     await api('/api/signature/generate-keypair');
     dsKeys = true;
-    showResult('sign-result', '✅ RSA-PSS签名密钥对已生成');
-  } catch(e) { showResult('sign-result', '❌ ' + e.message, true); }
+    showResult('sign-result', JSON.stringify({status: '密钥对已生成'}, null, 2));
+  } catch(e) { showResult('sign-result', e.message, true); }
 }
 
 async function dsSign() {
@@ -801,22 +1143,22 @@ async function dsSign() {
     const r = await api('/api/signature/sign', 'POST', {data: document.getElementById('sign-data').value});
     window._lastSignature = r.signature;
     window._lastSignData = r.data;
-    showResult('sign-result', '✅ 签名成功\\n\\n原文: ' + r.data + '\\n签名: ' + r.signature.substring(0,64) + '...');
-  } catch(e) { showResult('sign-result', '❌ ' + e.message, true); }
+    showResult('sign-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('sign-result', e.message, true); }
 }
 
 async function dsVerify() {
   try {
     const r = await api('/api/signature/verify', 'POST', {data: window._lastSignData, signature: window._lastSignature});
-    showResult('sign-result', (r.valid ? '✅' : '❌') + ' 签名验证: ' + (r.valid ? '通过 — 数据完整且来源可信' : '失败'));
-  } catch(e) { showResult('sign-result', '❌ ' + e.message, true); }
+    showResult('sign-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('sign-result', e.message, true); }
 }
 
 async function dsTamperVerify() {
   try {
     const r = await api('/api/signature/verify', 'POST', {data: '篡改后的数据!!!', signature: window._lastSignature});
-    showResult('sign-result', (r.valid ? '❌' : '✅') + ' 篡改检测: ' + (r.valid ? '未检测到篡改（异常）' : '成功检测到数据篡改！签名验证失败'));
-  } catch(e) { showResult('sign-result', '❌ ' + e.message, true); }
+    showResult('sign-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('sign-result', e.message, true); }
 }
 
 // ==================== 证书 ====================
@@ -824,34 +1166,31 @@ async function certIssue() {
   try {
     const r = await api('/api/certificate/issue', 'POST', {subject: document.getElementById('cert-subject').value});
     lastCertSerial = r.serial_number;
-    showResult('cert-result', '✅ 证书签发成功\\n\\n' + r.info);
-  } catch(e) { showResult('cert-result', '❌ ' + e.message, true); }
+    showResult('cert-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('cert-result', e.message, true); }
 }
 
 async function certList() {
   try {
     const r = await api('/api/certificate/list');
-    let s = '📋 已签发证书列表\\n\\n';
-    r.certificates.forEach(c => {
-      s += (c.revoked ? '❌' : '✅') + ' ' + c.serial_number + ' | ' + c.subject + (c.revoked ? ' [已吊销]' : '') + '\\n';
-    });
-    showResult('cert-result', s);
-  } catch(e) { showResult('cert-result', '❌ ' + e.message, true); }
+    showResult('cert-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('cert-result', e.message, true); }
 }
 
 async function certRevokeLast() {
   try {
     if (!lastCertSerial) throw new Error('请先签发证书');
     const r = await api('/api/certificate/revoke', 'POST', {serial_number: lastCertSerial, reason: 'key_compromise'});
-    showResult('cert-result', '✅ 证书已吊销: ' + r.serial_number + '\\n原因: ' + r.reason);
-  } catch(e) { showResult('cert-result', '❌ ' + e.message, true); }
+    showResult('cert-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('cert-result', e.message, true); }
 }
 
+// ==================== CRL ====================
 async function certShowCRL() {
   try {
     const r = await api('/api/certificate/crl');
-    showResult('cert-result', r.crl_info);
-  } catch(e) { showResult('cert-result', '❌ ' + e.message, true); }
+    showResult('crl-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('crl-result', e.message, true); }
 }
 
 // ==================== DH ====================
@@ -859,24 +1198,24 @@ async function dhGenClient() {
   try {
     const r = await api('/api/dh/generate', 'POST', {side: 'client'});
     dhClient = r.public_key;
-    showResult('dh-result', '✅ 客户端DH密钥已生成\\n\\n客户端公钥: ' + r.public_key.substring(0,48) + '...');
-  } catch(e) { showResult('dh-result', '❌ ' + e.message, true); }
+    showResult('dh-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('dh-result', e.message, true); }
 }
 
 async function dhGenServer() {
   try {
     const r = await api('/api/dh/generate', 'POST', {side: 'server'});
     dhServer = r.public_key;
-    showResult('dh-result', '✅ 服务端DH密钥已生成\\n\\n服务端公钥: ' + r.public_key.substring(0,48) + '...');
-  } catch(e) { showResult('dh-result', '❌ ' + e.message, true); }
+    showResult('dh-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('dh-result', e.message, true); }
 }
 
 async function dhCompute() {
   try {
     if (!dhClient || !dhServer) throw new Error('请先生成双方密钥');
     const r = await api('/api/dh/compute-shared', 'POST', {other_public_key: dhServer});
-    showResult('dh-result', '✅ DH密钥交换完成！\\n\\n共享密钥: ' + r.full_hex + '\\n\\n双方计算出相同的密钥，即使攻击者截获公钥也无法推导');
-  } catch(e) { showResult('dh-result', '❌ ' + e.message, true); }
+    showResult('dh-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('dh-result', e.message, true); }
 }
 
 // ==================== 防重放 ====================
@@ -884,28 +1223,23 @@ async function replayCheck() {
   try {
     const seq = parseInt(document.getElementById('replay-seq').value);
     const r = await api('/api/anti-replay/check', 'POST', {sequence: seq});
-    const icon = r.accepted ? '✅' : '🛡️';
-    showResult('replay-result', icon + ' 序列号 ' + seq + ': ' + (r.accepted ? '接受' : '拒绝') + ' — ' + r.reason + '\\n\\n' + JSON.stringify(api('/api/anti-replay/stats').then(r=>r), null, 2));
-    // 同时获取统计
-    const stats = await api('/api/anti-replay/stats');
-    showResult('replay-result', icon + ' 序列号 ' + seq + ': ' + (r.accepted ? '接受' : '拒绝') + ' — ' + r.reason);
-  } catch(e) { showResult('replay-result', '❌ ' + e.message, true); }
+    showResult('replay-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('replay-result', e.message, true); }
 }
 
 async function replayBatch() {
   try {
     await api('/api/anti-replay/reset', 'POST');
     const seqs = [3, 1, 7, 2, 5, 4, 6];
-    let s = '📦 批量测试（乱序序列）\\n\\n';
+    const results = [];
     for (const seq of seqs) {
       const r = await api('/api/anti-replay/check', 'POST', {sequence: seq});
-      s += (r.accepted ? '✅' : '🛡️') + ' seq=' + seq + ': ' + r.reason + '\\n';
+      results.push({sequence: seq, result: r});
     }
-    // 重放测试
     const r2 = await api('/api/anti-replay/check', 'POST', {sequence: 3});
-    s += '\\n🛡️ seq=3(重放): ' + r2.reason;
-    showResult('replay-result', s);
-  } catch(e) { showResult('replay-result', '❌ ' + e.message, true); }
+    results.push({sequence: 3, note: '重放测试', result: r2});
+    showResult('replay-result', JSON.stringify(results, null, 2));
+  } catch(e) { showResult('replay-result', e.message, true); }
 }
 
 async function replayAttack() {
@@ -914,90 +1248,70 @@ async function replayAttack() {
     await api('/api/anti-replay/check', 'POST', {sequence: 1});
     await api('/api/anti-replay/check', 'POST', {sequence: 2});
     const r = await api('/api/anti-replay/check', 'POST', {sequence: 1});
-    showResult('replay-result', '🛡️ 模拟重放攻击\\n\\n✅ seq=1: 首次接收\\n✅ seq=2: 首次接收\\n🛡️ seq=1(重放): ' + r.reason);
-  } catch(e) { showResult('replay-result', '❌ ' + e.message, true); }
+    showResult('replay-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('replay-result', e.message, true); }
 }
 
 async function replayReset() {
   try {
     await api('/api/anti-replay/reset', 'POST');
-    showResult('replay-result', '✅ 滑动窗口已重置');
-  } catch(e) { showResult('replay-result', '❌ ' + e.message, true); }
+    showResult('replay-result', JSON.stringify({status: '已重置'}, null, 2));
+  } catch(e) { showResult('replay-result', e.message, true); }
 }
 
 // ==================== 密钥轮换 ====================
 async function kmInit() {
   try {
     const r = await api('/api/key-manager/initialize', 'POST');
-    showResult('keymgr-result', '✅ 密钥已初始化\\n\\n' + JSON.stringify(r, null, 2));
-  } catch(e) { showResult('keymgr-result', '❌ ' + e.message, true); }
+    showResult('keymgr-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('keymgr-result', e.message, true); }
 }
 
 async function kmRotate() {
   try {
     const r = await api('/api/key-manager/rotate', 'POST');
-    showResult('keymgr-result', '✅ 密钥已轮换\\n\\n' + JSON.stringify(r, null, 2));
-  } catch(e) { showResult('keymgr-result', '❌ ' + e.message, true); }
+    showResult('keymgr-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('keymgr-result', e.message, true); }
 }
 
 async function kmStatus() {
   try {
     const r = await api('/api/key-manager/status');
-    showResult('keymgr-result', '📋 密钥管理器状态\\n\\n' + JSON.stringify(r, null, 2));
-  } catch(e) { showResult('keymgr-result', '❌ ' + e.message, true); }
+    showResult('keymgr-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('keymgr-result', e.message, true); }
 }
 
-// ==================== VPN隧道 ====================
+// ==================== GCM隧道 ====================
 async function tunnelEnc(mode) {
   try {
+    const payloadId = mode === 'GCM' ? 'tunnel-gcm-payload' : 'tunnel-cbc-payload';
+    const srcId = mode === 'GCM' ? 'tunnel-gcm-src' : 'tunnel-cbc-src';
+    const dstId = mode === 'GCM' ? 'tunnel-gcm-dst' : 'tunnel-cbc-dst';
+    const resultId = mode === 'GCM' ? 'tunnel-gcm-result' : 'tunnel-cbc-result';
+    
     const r = await api('/api/tunnel/encapsulate', 'POST', {
-      payload: document.getElementById('tunnel-payload').value,
-      src_ip: document.getElementById('tunnel-src').value,
-      dst_ip: document.getElementById('tunnel-dst').value,
+      payload: document.getElementById(payloadId).value,
+      src_ip: document.getElementById(srcId).value,
+      dst_ip: document.getElementById(dstId).value,
       mode: mode
     });
-    let s = '✅ 隧道封装成功 (' + mode + ' 模式)\\n\\n' + r.packet_info + '\\n\\n';
-    s += '头部信息:\\n';
-    s += '  加密模式: ' + r.header.encrypt_mode + '\\n';
-    s += '  压缩: ' + (r.header.compressed ? '是' : '否') + '\\n';
-    s += '  序列号: ' + r.header.sequence + '\\n';
-    s += '  标志位: 0x' + r.header.flags.toString(16) + '\\n\\n';
-    s += '密文预览: ' + r.ciphertext_preview + '\\n';
-    s += 'HMAC标签: ' + r.hmac_tag;
-    showResult('tunnel-result', s);
-  } catch(e) { showResult('tunnel-result', '❌ ' + e.message, true); }
+    showResult(resultId, JSON.stringify(r, null, 2));
+  } catch(e) { showResult(mode === 'GCM' ? 'tunnel-gcm-result' : 'tunnel-cbc-result', e.message, true); }
 }
 
 async function tunnelStats() {
   try {
     const r = await api('/api/tunnel/stats');
-    showResult('tunnel-result', '📊 隧道统计\\n\\n' + JSON.stringify(r, null, 2));
-  } catch(e) { showResult('tunnel-result', '❌ ' + e.message, true); }
+    showResult('tunnel-gcm-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('tunnel-gcm-result', e.message, true); }
 }
 
 // ==================== 完整流程 ====================
 async function runFullFlow() {
   try {
     const r = await api('/api/demo/full-flow');
-    let s = '🚀 完整VPN安全通信流程演示\\n\\n';
-    s += '━━━ 步骤1: DH密钥交换 ━━━\\n';
-    s += '共享密钥: ' + r.dh_shared_key_preview + '\\n\\n';
-    s += '━━━ 步骤2: TLS 1.3 密钥派生 ━━━\\n';
-    for (const [k,v] of Object.entries(r.session_keys_preview)) s += '  ' + k + ': ' + v + '\\n';
-    s += '\\n━━━ 步骤3: AES-256-GCM 加密通信 ━━━\\n';
-    r.messages.forEach((m, i) => {
-      s += '  [' + (i+1) + '] ' + (m.match ? '✅' : '❌') + ' ' + m.original + '\\n';
-    });
-    s += '\\n━━━ 步骤4: 连接统计 ━━━\\n';
-    s += '  发送包数: ' + r.tunnel_stats.packets_sent + '\\n';
-    s += '  接收包数: ' + r.tunnel_stats.packets_received + '\\n';
-    s += '  总字节数: ' + r.tunnel_stats.total_bytes + '\\n';
-    s += '\\n━━━ 步骤5: 防重放统计 ━━━\\n';
-    s += '  窗口范围: ' + r.anti_replay_stats.window_range + '\\n';
-    s += '  重放检测: ' + r.anti_replay_stats.replay_detected + ' 次\\n';
-    s += '\\n✅ 全部流程演示完成！';
-    showResult('flow-result', s);
-  } catch(e) { showResult('flow-result', '❌ ' + e.message, true); }
+    showResult('flow-result', JSON.stringify(r, null, 2));
+  } catch(e) { showResult('flow-result', e.message, true); }
 }
 </script>
 </body>

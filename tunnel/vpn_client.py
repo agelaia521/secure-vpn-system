@@ -10,13 +10,13 @@ import socket
 import time
 from typing import Optional
 
-from secure_vpn.crypto.aes_cipher import AESCipher
-from secure_vpn.crypto.rsa_cipher import RSACipher
-from secure_vpn.security.digital_signature import DigitalSignature
-from secure_vpn.security.certificate import CertificateAuthority
-from secure_vpn.security.key_exchange import DHKeyExchange
-from secure_vpn.tunnel.tunnel_protocol import TunnelProtocol
-from secure_vpn.utils.logger import Logger
+from crypto.aes_cipher import AESCipher
+from crypto.rsa_cipher import RSACipher
+from security.digital_signature import DigitalSignature
+from security.certificate import CertificateAuthority
+from security.key_exchange import DHKeyExchange
+from tunnel.tunnel_protocol import TunnelProtocol
+from utils.logger import Logger
 
 
 class VPNClient:

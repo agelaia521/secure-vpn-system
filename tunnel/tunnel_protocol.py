@@ -12,9 +12,9 @@ import hmac as hmac_mod
 import threading
 from typing import Optional
 
-from secure_vpn.crypto.aes_cipher import AESCipher
-from secure_vpn.crypto.hash_mac import HashMAC
-from secure_vpn.security.integrity import AntiReplayWindow, SessionKeyManager
+from crypto.aes_cipher import AESCipher
+from crypto.hash_mac import HashMAC
+from security.integrity import AntiReplayWindow, SessionKeyManager
 
 
 class ConnectionStats:

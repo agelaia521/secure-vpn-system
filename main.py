@@ -6,10 +6,10 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from secure_vpn.tunnel.vpn_server import VPNServer
-from secure_vpn.tunnel.vpn_client import VPNClient
-from secure_vpn.utils.logger import setup_logger
-from secure_vpn.utils.config import VPNConfig
+from tunnel.vpn_server import VPNServer
+from tunnel.vpn_client import VPNClient
+from utils.logger import setup_logger
+from utils.config import VPNConfig
 
 
 def main():
@@ -52,14 +52,14 @@ def run_demo():
     print("  轻量级安全VPN通信系统（增强版）- 功能演示")
     print("=" * 70)
 
-    from secure_vpn.crypto.aes_cipher import AESCipher, KeyDerivation
-    from secure_vpn.crypto.rsa_cipher import RSACipher
-    from secure_vpn.crypto.hash_mac import HashMAC
-    from secure_vpn.security.digital_signature import DigitalSignature
-    from secure_vpn.security.certificate import CertificateAuthority
-    from secure_vpn.security.key_exchange import DHKeyExchange
-    from secure_vpn.security.integrity import IntegrityChecker, AntiReplayWindow, SessionKeyManager
-    from secure_vpn.tunnel.tunnel_protocol import TunnelProtocol
+    from crypto.aes_cipher import AESCipher, KeyDerivation
+    from crypto.rsa_cipher import RSACipher
+    from crypto.hash_mac import HashMAC
+    from security.digital_signature import DigitalSignature
+    from security.certificate import CertificateAuthority
+    from security.key_exchange import DHKeyExchange
+    from security.integrity import IntegrityChecker, AntiReplayWindow, SessionKeyManager
+    from tunnel.tunnel_protocol import TunnelProtocol
 
     # ===== 模块一：密码算法 =====
     print("\n" + "=" * 70)
