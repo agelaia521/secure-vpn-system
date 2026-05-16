@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure VPN System</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="tabs">
+<div class="tab active" onclick="showPanel('aes-cbc')">AES-CBC</div>
+<div class="tab" onclick="showPanel('aes-gcm')">AES-GCM</div>
+<div class="tab" onclick="showPanel('rsa')">RSA</div>
+<div class="tab" onclick="showPanel('hash')">SHA-256</div>
+<div class="tab" onclick="showPanel('hmac')">HMAC</div>
+<div class="tab" onclick="showPanel('hkdf')">HKDF</div>
+<div class="tab" onclick="showPanel('pbkdf2')">PBKDF2</div>
+<div class="tab" onclick="showPanel('sign')">数字签名</div>
+<div class="tab" onclick="showPanel('cert')">数字证书</div>
+<div class="tab" onclick="showPanel('crl')">CRL</div>
+<div class="tab" onclick="showPanel('dh')">DH密钥交换</div>
+<div class="tab" onclick="showPanel('replay')">防重放</div>
+<div class="tab" onclick="showPanel('keymgr')">密钥轮换</div>
+<div class="tab" onclick="showPanel('tunnel-gcm')">GCM隧道</div>
+<div class="tab" onclick="showPanel('tunnel-cbc')">CBC隧道</div>
+<div class="tab" onclick="showPanel('flow')">完整流程</div>
+</div>
+
+<div class="panels">
+
+<!-- AES-CBC -->
+<div id="panel-aes-cbc" class="panel active">
+<div class="panel-title">AES-256-CBC 加密</div>
+<div class="panel-desc">CBC模式对称加密，使用随机IV</div>
+<div class="form-row">
+<label>明文</label>
+<textarea id="aes-cbc-pt">这是一条通过VPN隧道加密传输的机密消息！</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="aesCbcEncrypt()">加密</button>
+</div>
+<div class="result-container">
+<div id="aes-cbc-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('aes-cbc-result')">复制</button>
+</div>
+</div>
+
+<!-- AES-GCM -->
+<div id="panel-aes-gcm" class="panel">
+<div class="panel-title">AES-256-GCM 认证加密</div>
+<div class="panel-desc">GCM模式提供加密和完整性认证</div>
+<div class="form-row">
+<label>明文</label>
+<textarea id="aes-gcm-pt">这是一条通过VPN隧道加密传输的机密消息！</textarea>
+</div>
+<div class="form-row">
+<label>AAD（附加认证数据）</label>
+<input type="text" id="aes-gcm-aad" value="VPN-Tunnel-Packet-v2">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="aesGcmEncrypt()">加密</button>
+</div>
+<div class="result-container">
+<div id="aes-gcm-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('aes-gcm-result')">复制</button>
+</div>
+</div>
+
+<!-- RSA -->
+<div id="panel-rsa" class="panel">
+<div class="panel-title">RSA-2048 非对称加密</div>
+<div class="panel-desc">使用OAEP填充的RSA加密</div>
+<div class="btn-group">
+<button class="btn" onclick="rsaGenKeys()">生成密钥对</button>
+</div>
+<div class="form-row">
+<label>明文</label>
+<textarea id="rsa-pt">Hello VPN! RSA-2048-OAEP握手消息</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="rsaEncrypt()">加密</button>
+<button class="btn" onclick="rsaDecrypt()">解密</button>
+</div>
+<div class="result-container">
+<div id="rsa-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('rsa-result')">复制</button>
+</div>
+</div>
+
+<!-- SHA-256 -->
+<div id="panel-hash" class="panel">
+<div class="panel-title">SHA-256 哈希</div>
+<div class="panel-desc">计算消息的SHA-256哈希值</div>
+<div class="form-row">
+<label>数据</label>
+<textarea id="hash-data">VPN隧道数据包内容</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="sha256Hash()">计算哈希</button>
+<button class="btn" onclick="multiHash()">多算法</button>
+</div>
+<div class="result-container">
+<div id="hash-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('hash-result')">复制</button>
+</div>
+</div>
+
+<!-- HMAC -->
+<div id="panel-hmac" class="panel">
+<div class="panel-title">HMAC-SHA256 消息认证</div>
+<div class="panel-desc">使用密钥生成消息认证码</div>
+<div class="form-row">
+<label>数据</label>
+<textarea id="hmac-data">VPN隧道数据包内容</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="hmacGenerate()">生成HMAC</button>
+</div>
+<div class="result-container">
+<div id="hmac-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('hmac-result')">复制</button>
+</div>
+</div>
+
+<!-- HKDF -->
+<div id="panel-hkdf" class="panel">
+<div class="panel-title">HKDF 密钥派生</div>
+<div class="panel-desc">从主密钥派生出多个子密钥</div>
+<div class="form-row">
+<label>上下文信息</label>
+<input type="text" id="hkdf-info" value="vpn-session">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="hkdfDerive()">派生</button>
+</div>
+<div class="result-container">
+<div id="hkdf-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('hkdf-result')">复制</button>
+</div>
+</div>
+
+<!-- PBKDF2 -->
+<div id="panel-pbkdf2" class="panel">
+<div class="panel-title">PBKDF2 密码派生</div>
+<div class="panel-desc">从密码安全地派生出加密密钥</div>
+<div class="form-row">
+<label>密码</label>
+<input type="text" id="pbkdf2-pwd" value="MySecurePassword123">
+</div>
+<div class="form-row">
+<label>迭代次数</label>
+<input type="text" id="pbkdf2-iter" value="100000">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="pbkdf2Derive()">派生</button>
+</div>
+<div class="result-container">
+<div id="pbkdf2-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('pbkdf2-result')">复制</button>
+</div>
+</div>
+
+<!-- 数字签名 -->
+<div id="panel-sign" class="panel">
+<div class="panel-title">RSA-PSS 数字签名</div>
+<div class="panel-desc">使用私钥签名，公钥验证</div>
+<div class="btn-group">
+<button class="btn" onclick="dsGenKeys()">生成密钥</button>
+</div>
+<div class="form-row">
+<label>数据</label>
+<textarea id="sign-data">VPN认证数据 - 身份确认</textarea>
+</div>
+<div class="btn-group">
+<button class="btn" onclick="dsSign()">签名</button>
+<button class="btn" onclick="dsVerify()">验证</button>
+<button class="btn" onclick="dsTamperVerify()">篡改验证</button>
+</div>
+<div class="result-container">
+<div id="sign-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('sign-result')">复制</button>
+</div>
+</div>
+
+<!-- 数字证书 -->
+<div id="panel-cert" class="panel">
+<div class="panel-title">X.509 数字证书</div>
+<div class="panel-desc">CA签发和验证数字证书</div>
+<div class="form-row">
+<label>证书主题</label>
+<input type="text" id="cert-subject" value="VPN-Server-01">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="certIssue()">签发</button>
+<button class="btn" onclick="certList()">列表</button>
+<button class="btn" onclick="certRevokeLast()">吊销</button>
+</div>
+<div class="result-container">
+<div id="cert-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('cert-result')">复制</button>
+</div>
+</div>
+
+<!-- CRL -->
+<div id="panel-crl" class="panel">
+<div class="panel-title">CRL 证书吊销列表</div>
+<div class="panel-desc">管理已吊销的证书</div>
+<div class="btn-group">
+<button class="btn" onclick="certShowCRL()">查看CRL</button>
+</div>
+<div class="result-container">
+<div id="crl-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('crl-result')">复制</button>
+</div>
+</div>
+
+<!-- DH密钥交换 -->
+<div id="panel-dh" class="panel">
+<div class="panel-title">Diffie-Hellman 密钥交换</div>
+<div class="panel-desc">双方在不安全信道上协商共享密钥</div>
+<div class="btn-group">
+<button class="btn" onclick="dhGenClient()">客户端密钥</button>
+<button class="btn" onclick="dhGenServer()">服务端密钥</button>
+<button class="btn" onclick="dhCompute()">计算共享密钥</button>
+</div>
+<div class="result-container">
+<div id="dh-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('dh-result')">复制</button>
+</div>
+</div>
+
+<!-- 防重放 -->
+<div id="panel-replay" class="panel">
+<div class="panel-title">防重放攻击滑动窗口</div>
+<div class="panel-desc">使用滑动窗口机制检测重放攻击</div>
+<div class="form-row">
+<label>序列号</label>
+<input type="text" id="replay-seq" value="1">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="replayCheck()">检查</button>
+<button class="btn" onclick="replayBatch()">批量测试</button>
+<button class="btn" onclick="replayAttack()">模拟重放</button>
+<button class="btn" onclick="replayReset()">重置</button>
+</div>
+<div class="result-container">
+<div id="replay-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('replay-result')">复制</button>
+</div>
+</div>
+
+<!-- 密钥轮换 -->
+<div id="panel-keymgr" class="panel">
+<div class="panel-title">会话密钥轮换</div>
+<div class="panel-desc">定期轮换会话密钥增强安全性</div>
+<div class="btn-group">
+<button class="btn" onclick="kmInit()">初始化</button>
+<button class="btn" onclick="kmRotate()">轮换</button>
+<button class="btn" onclick="kmStatus()">状态</button>
+</div>
+<div class="result-container">
+<div id="keymgr-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('keymgr-result')">复制</button>
+</div>
+</div>
+
+<!-- GCM隧道 -->
+<div id="panel-tunnel-gcm" class="panel">
+<div class="panel-title">VPN隧道 (GCM模式)</div>
+<div class="panel-desc">使用AES-GCM加密的VPN隧道</div>
+<div class="form-row">
+<label>载荷</label>
+<textarea id="tunnel-gcm-payload">这是一条通过VPN安全隧道传输的用户数据包</textarea>
+</div>
+<div class="form-row">
+<label>源IP</label>
+<input type="text" id="tunnel-gcm-src" value="10.0.0.2">
+</div>
+<div class="form-row">
+<label>目的IP</label>
+<input type="text" id="tunnel-gcm-dst" value="10.0.0.1">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="tunnelEnc('GCM')">封装</button>
+<button class="btn" onclick="tunnelStats()">统计</button>
+</div>
+<div class="result-container">
+<div id="tunnel-gcm-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('tunnel-gcm-result')">复制</button>
+</div>
+</div>
+
+<!-- CBC隧道 -->
+<div id="panel-tunnel-cbc" class="panel">
+<div class="panel-title">VPN隧道 (CBC模式)</div>
+<div class="panel-desc">使用AES-CBC加密的VPN隧道</div>
+<div class="form-row">
+<label>载荷</label>
+<textarea id="tunnel-cbc-payload">这是一条通过VPN安全隧道传输的用户数据包</textarea>
+</div>
+<div class="form-row">
+<label>源IP</label>
+<input type="text" id="tunnel-cbc-src" value="10.0.0.2">
+</div>
+<div class="form-row">
+<label>目的IP</label>
+<input type="text" id="tunnel-cbc-dst" value="10.0.0.1">
+</div>
+<div class="btn-group">
+<button class="btn" onclick="tunnelEnc('CBC')">封装</button>
+<button class="btn" onclick="tunnelStats()">统计</button>
+</div>
+<div class="result-container">
+<div id="tunnel-cbc-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('tunnel-cbc-result')">复制</button>
+</div>
+</div>
+
+<!-- 完整流程 -->
+<div id="panel-flow" class="panel">
+<div class="panel-title">完整VPN安全通信流程</div>
+<div class="panel-desc">一键演示从密钥交换到加密通信的完整流程</div>
+<div class="btn-group">
+<button class="btn" onclick="runFullFlow()">运行完整演示</button>
+</div>
+<div class="result-container">
+<div id="flow-result" class="result" style="display:none"></div>
+<button class="copy-btn" onclick="copyResult('flow-result')">复制</button>
+</div>
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
