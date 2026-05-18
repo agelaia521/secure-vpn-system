@@ -7,6 +7,235 @@
 <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+<div class="main-tabs">
+  <div class="main-tab active" onclick="showSection('home')">主页</div>
+  <div class="main-tab" onclick="showSection('demo')">功能演示</div>
+</div>
+
+<div id="section-home" class="main-section active">
+  <div class="main-panel">
+    <div class="main-panel-title">VPN安全通信演示</div>
+    <div class="main-panel-desc">模拟两个用户通过VPN隧道进行端到端加密通信</div>
+    
+    <div class="status-row">
+      <span class="status-item"><span class="status-dot"></span> 服务在线</span>
+      <span class="status-item"><span class="status-dot"></span> AES-256-GCM</span>
+      <span class="status-item"><span class="status-dot"></span> VPN v2</span>
+    </div>
+
+    <div class="comm-grid">
+      <!-- 用户A (Alice) -->
+      <div class="comm-panel">
+        <div class="comm-panel-title">Alice (10.8.0.2)</div>
+        <div class="user-card">
+          <div class="user-card-header">
+            <span class="user-card-name">Alice</span>
+            <span class="user-card-ip">10.8.0.2</span>
+          </div>
+        </div>
+        <div class="msg-area" id="chat-alice">
+[SYSTEM] VPN隧道已建立
+[SYSTEM] DH密钥交换完成
+[SYSTEM] 证书验证通过
+        </div>
+        <div class="msg-input-row">
+          <textarea id="input-alice" placeholder="输入消息..." onkeydown="if(event.keyCode==13 && !event.shiftKey){sendMessage('alice');return false;}"></textarea>
+          <button onclick="sendMessage('alice')">发送</button>
+        </div>
+      </div>
+
+      <!-- VPN隧道信息 -->
+      <div class="comm-panel">
+        <div class="comm-panel-title">VPN隧道</div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-box-value" id="stat-packets">0</div>
+            <div class="stat-box-label">传输包数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-value" id="stat-encrypted">0</div>
+            <div class="stat-box-label">加密字节</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-value" id="stat-secure">100%</div>
+            <div class="stat-box-label">安全率</div>
+          </div>
+        </div>
+        <div class="encryption-panel">
+          <div class="encryption-row">
+            <span class="enc-label">加密:</span>
+            <span class="enc-value">AES-256-GCM</span>
+          </div>
+          <div class="encryption-row">
+            <span class="enc-label">哈希:</span>
+            <span class="enc-value">SHA-256</span>
+          </div>
+          <div class="encryption-row">
+            <span class="enc-label">密钥交换:</span>
+            <span class="enc-value">Diffie-Hellman</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 用户B (Bob) -->
+      <div class="comm-panel">
+        <div class="comm-panel-title">Bob (10.8.0.3)</div>
+        <div class="user-card">
+          <div class="user-card-header">
+            <span class="user-card-name">Bob</span>
+            <span class="user-card-ip">10.8.0.3</span>
+          </div>
+        </div>
+        <div class="msg-area" id="chat-bob">
+[SYSTEM] VPN隧道已建立
+[SYSTEM] DH密钥交换完成
+[SYSTEM] 证书验证通过
+        </div>
+        <div class="msg-input-row">
+          <textarea id="input-bob" placeholder="输入消息..." onkeydown="if(event.keyCode==13 && !event.shiftKey){sendMessage('bob');return false;}"></textarea>
+          <button onclick="sendMessage('bob')">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 安全配置面板 -->
+    <div class="divider"></div>
+    
+    <div class="main-panel-title">安全配置</div>
+    <div class="main-panel-desc">配置VPN连接的安全参数，包括DH密钥交换、证书验证和加密算法</div>
+    
+    <div class="config-grid">
+      <!-- DH密钥交换配置 -->
+      <div class="config-panel">
+        <div class="config-panel-title">DH密钥交换参数</div>
+        
+        <div class="config-row">
+          <label class="config-label">素数位数</label>
+          <select id="dh-prime-bits" class="config-select" onchange="updateSecurityConfig()">
+            <option value="2048">2048 位</option>
+            <option value="3072" selected>3072 位</option>
+            <option value="4096">4096 位</option>
+          </select>
+          <div class="config-hint">推荐使用3072位或更高</div>
+        </div>
+        
+        <div class="config-row">
+          <label class="config-label">生成元(g)</label>
+          <div class="config-value" id="dh-generator">2</div>
+        </div>
+        
+        <div class="config-btn-group">
+          <button class="config-btn" onclick="generateDHParams()">生成参数</button>
+          <button class="config-btn" onclick="showDHInfo()">查看详情</button>
+        </div>
+        
+        <div class="config-status valid" id="dh-status">参数有效</div>
+      </div>
+
+      <!-- 证书验证配置 -->
+      <div class="config-panel">
+        <div class="config-panel-title">证书验证方式</div>
+        
+        <div class="config-row">
+          <label class="config-label">验证模式</label>
+          <select id="cert-validation" class="config-select" onchange="updateSecurityConfig()">
+            <option value="strict" selected>严格模式</option>
+            <option value="relaxed">宽松模式</option>
+            <option value="skip">跳过验证</option>
+          </select>
+          <div class="config-hint">生产环境建议使用严格模式</div>
+        </div>
+        
+        <div class="config-row">
+          <label class="config-label">CRL检查</label>
+          <select id="crl-check" class="config-select" onchange="updateSecurityConfig()">
+            <option value="enabled" selected>启用</option>
+            <option value="disabled">禁用</option>
+          </select>
+        </div>
+        
+        <div class="config-row">
+          <label class="config-label">证书有效期检查</label>
+          <select id="cert-expiry" class="config-select" onchange="updateSecurityConfig()">
+            <option value="enabled" selected>启用</option>
+            <option value="disabled">禁用</option>
+          </select>
+        </div>
+        
+        <div class="config-btn-group">
+          <button class="config-btn" onclick="testCertificate()">测试证书</button>
+          <button class="config-btn" onclick="viewCertificate()">查看证书</button>
+        </div>
+        
+        <div class="config-status valid" id="cert-status">验证通过</div>
+      </div>
+
+      <!-- 加密算法配置 -->
+      <div class="config-panel">
+        <div class="config-panel-title">加密算法选择</div>
+        
+        <div class="config-row">
+          <label class="config-label">对称加密</label>
+          <select id="encryption-algo" class="config-select" onchange="updateSecurityConfig()">
+            <option value="AES-256-GCM" selected>AES-256-GCM</option>
+            <option value="AES-256-CBC">AES-256-CBC</option>
+            <option value="AES-128-GCM">AES-128-GCM</option>
+            <option value="AES-128-CBC">AES-128-CBC</option>
+          </select>
+          <div class="config-hint">GCM提供认证加密</div>
+        </div>
+        
+        <div class="config-row">
+          <label class="config-label">哈希算法</label>
+          <select id="hash-algo" class="config-select" onchange="updateSecurityConfig()">
+            <option value="SHA-256" selected>SHA-256</option>
+            <option value="SHA-384">SHA-384</option>
+            <option value="SHA-512">SHA-512</option>
+          </select>
+        </div>
+        
+        <div class="config-row">
+          <label class="config-label">HMAC算法</label>
+          <select id="hmac-algo" class="config-select" onchange="updateSecurityConfig()">
+            <option value="HMAC-SHA256" selected>HMAC-SHA256</option>
+            <option value="HMAC-SHA384">HMAC-SHA384</option>
+            <option value="HMAC-SHA512">HMAC-SHA512</option>
+          </select>
+        </div>
+        
+        <div class="config-btn-group">
+          <button class="config-btn" onclick="testEncryption()">测试加密</button>
+          <button class="config-btn" onclick="benchmarkAlgo()">性能测试</button>
+        </div>
+        
+        <div class="config-status valid" id="enc-status">算法有效</div>
+      </div>
+    </div>
+
+    <!-- 调试工具 -->
+    <div class="debug-panel">
+      <div class="debug-panel-title">调试信息</div>
+      <div class="debug-output" id="debug-output">// 安全配置调试信息
+// 选择配置项并点击测试按钮查看详情
+
+当前配置:
+- DH素数位数: 3072
+- 证书验证: 严格模式
+- 加密算法: AES-256-GCM
+- 哈希算法: SHA-256
+- HMAC算法: HMAC-SHA256</div>
+    </div>
+
+    <!-- 通信日志 -->
+    <div class="log-panel">
+      <div class="main-panel-title">通信日志</div>
+      <div class="log-container" id="log-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 功能演示页 -->
+<div id="section-demo" class="main-section">
 <div class="tabs">
 <div class="tab active" onclick="showPanel('aes-cbc')">AES-CBC</div>
 <div class="tab" onclick="showPanel('aes-gcm')">AES-GCM</div>

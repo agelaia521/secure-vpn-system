@@ -60,6 +60,7 @@ session_state = {
 
 class EncryptRequest(BaseModel):
     plaintext: str
+    aad: str = ""
 
 class RSAEncryptRequest(BaseModel):
     plaintext: str
@@ -125,11 +126,16 @@ def aes_encrypt_cbc(req: EncryptRequest):
     ct = aes.encrypt_cbc(req.plaintext, key)
     return {"ciphertext": ct, "key_hex": key.hex()}
 
+class DecryptRequest(BaseModel):
+    ciphertext: str
+    key_hex: str
+    aad: str = ""
+
 @app.post("/api/aes/decrypt-cbc")
-def aes_decrypt_cbc(ciphertext: str, key_hex: str):
-    key = bytes.fromhex(key_hex)
+def aes_decrypt_cbc(req: DecryptRequest):
+    key = bytes.fromhex(req.key_hex)
     try:
-        pt = aes.decrypt_cbc(ciphertext, key)
+        pt = aes.decrypt_cbc(req.ciphertext, key)
         return {"plaintext": pt}
     except Exception as e:
         raise HTTPException(400, f"解密失败: {e}")
@@ -137,15 +143,16 @@ def aes_decrypt_cbc(ciphertext: str, key_hex: str):
 @app.post("/api/aes/encrypt-gcm")
 def aes_encrypt_gcm(req: EncryptRequest):
     key = aes.generate_key()
-    ct = aes.encrypt_gcm(req.plaintext, key)
+    aad_bytes = req.aad.encode() if req.aad else None
+    ct = aes.encrypt_gcm(req.plaintext, key, aad=aad_bytes)
     return {"ciphertext": ct, "key_hex": key.hex()}
 
 @app.post("/api/aes/decrypt-gcm")
-def aes_decrypt_gcm(ciphertext: str, key_hex: str, aad: str = ""):
-    key = bytes.fromhex(key_hex)
-    aad_bytes = aad.encode() if aad else None
+def aes_decrypt_gcm(req: DecryptRequest):
+    key = bytes.fromhex(req.key_hex)
+    aad_bytes = req.aad.encode() if req.aad else None
     try:
-        pt = aes.decrypt_gcm(ciphertext, key, aad=aad_bytes)
+        pt = aes.decrypt_gcm(req.ciphertext, key, aad=aad_bytes)
         return {"plaintext": pt}
     except Exception as e:
         raise HTTPException(400, f"解密失败: {e}")
@@ -448,4 +455,8 @@ async def index(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8080)
+    args = parser.parse_args()
+    uvicorn.run(app, host="0.0.0.0", port=args.port)

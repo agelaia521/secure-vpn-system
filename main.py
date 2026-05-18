@@ -1,5 +1,6 @@
 """
 轻量级安全VPN通信系统（增强版）- 项目主入口
+支持应用层和网络层两种VPN实现
 """
 
 import sys
@@ -8,6 +9,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from tunnel.vpn_server import VPNServer
 from tunnel.vpn_client import VPNClient
+from tunnel.network_server import NetworkLayerServer
+from tunnel.network_client import NetworkLayerClient
 from utils.logger import setup_logger
 from utils.config import VPNConfig
 
@@ -16,14 +19,28 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="轻量级安全VPN通信系统（增强版）")
     subparsers = parser.add_subparsers(dest="mode", help="运行模式")
-    sp = subparsers.add_parser("server", help="启动VPN服务端")
+    
+    # 应用层VPN
+    sp = subparsers.add_parser("server", help="启动VPN服务端（应用层）")
     sp.add_argument("--host", default="0.0.0.0")
     sp.add_argument("--port", type=int, default=9090)
-    cp = subparsers.add_parser("client", help="启动VPN客户端")
+    
+    cp = subparsers.add_parser("client", help="启动VPN客户端（应用层）")
     cp.add_argument("--host", default="127.0.0.1")
     cp.add_argument("--port", type=int, default=9090)
+    
+    # 网络层VPN
+    nsp = subparsers.add_parser("network-server", help="启动网络层VPN服务端（使用TUN接口）")
+    nsp.add_argument("--host", default="0.0.0.0")
+    nsp.add_argument("--port", type=int, default=9091)
+    
+    ncp = subparsers.add_parser("network-client", help="启动网络层VPN客户端（使用TUN接口）")
+    ncp.add_argument("--host", default="127.0.0.1")
+    ncp.add_argument("--port", type=int, default=9091)
+    
     subparsers.add_parser("demo", help="运行本地演示")
     subparsers.add_parser("test", help="运行单元测试")
+    
     args = parser.parse_args()
 
     if args.mode == "server":
@@ -38,6 +55,18 @@ def main():
         config.server_host = args.host
         config.server_port = args.port
         VPNClient(config, logger).connect()
+    elif args.mode == "network-server":
+        logger = setup_logger("Network_VPN_Server")
+        config = VPNConfig()
+        config.server_host = args.host
+        config.server_port = args.port
+        NetworkLayerServer(config, logger).start()
+    elif args.mode == "network-client":
+        logger = setup_logger("Network_VPN_Client")
+        config = VPNConfig()
+        config.server_host = args.host
+        config.server_port = args.port
+        NetworkLayerClient(config, logger).connect()
     elif args.mode == "demo":
         run_demo()
     elif args.mode == "test":
