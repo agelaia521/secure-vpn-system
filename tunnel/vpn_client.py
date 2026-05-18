@@ -76,9 +76,9 @@ class VPNClient:
             self.logger.info("TCP连接已建立")
 
             # 步骤1: 发送握手请求
-            self.session_id = str(uuid.uuid4())[:8]
+            self.client_id = str(uuid.uuid4())[:8]
             handshake = self.tunnel.create_handshake_request(
-                client_id=f"Client-{self.session_id}"
+                client_id=f"Client-{self.client_id}"
             )
             self._send_json(self.socket, handshake)
             self.logger.info("握手请求已发送")
@@ -92,7 +92,7 @@ class VPNClient:
             server_cert = response.get("certificate")
             server_pub_key_pem = response.get("server_public_key")
             server_dh_pub = int(response["dh_public_key"])
-            self.session_id = response.get("session_id", self.session_id)
+            self.session_id = response.get("session_id", self.client_id)
 
             # 验证服务端证书
             if server_cert:
@@ -133,6 +133,8 @@ class VPNClient:
 
             self.connected = True
             self.logger.info(f"安全隧道已建立 ✓ (会话: {self.session_id})")
+            self.logger.info(f"当前客户端ID: Client-{self.client_id}")
+            self.logger.info(f"共享密钥: {self.shared_key.hex()[:16]}...")
 
             # 步骤5: 进入交互模式
             self._interactive_mode()
@@ -188,22 +190,68 @@ class VPNClient:
 
     def _interactive_mode(self):
         """交互式通信模式"""
-        self.logger.info("\n" + "=" * 40)
-        self.logger.info("  安全隧道已就绪，输入消息进行通信")
+        self.logger.info("\n" + "=" * 50)
+        self.logger.info("  安全隧道已就绪")
+        self.logger.info("  发送消息格式: 目标ID|消息内容")
+        self.logger.info("  示例: Client-Bob|Hello from Alice")
         self.logger.info("  输入 'quit' 断开连接")
-        self.logger.info("=" * 40 + "\n")
+        self.logger.info("  输入 'list' 查看在线客户端")
+        self.logger.info("=" * 50 + "\n")
 
-        self.socket.settimeout(None)
+        # 启动接收线程
+        import threading
+        recv_thread = threading.Thread(target=self._receive_loop, daemon=True)
+        recv_thread.start()
+
         while self.connected:
             try:
                 message = input("VPN> ")
                 if message.lower() in ('quit', 'exit', 'q'):
                     break
+                if message.lower() == 'list':
+                    self.logger.info("命令功能: 显示在线客户端")
+                    continue
                 if message.strip():
                     self.send_data(message)
             except EOFError:
                 break
             except KeyboardInterrupt:
+                break
+
+    def _receive_loop(self):
+        """接收服务端消息循环"""
+        while self.connected:
+            try:
+                self.socket.settimeout(1.0)
+                data = self._recv_json(self.socket)
+                if not data:
+                    continue
+                
+                if data.get("type") == "FORWARD":
+                    # 收到转发消息
+                    packet = data["packet"]
+                    payload = self.tunnel.decapsulate(packet, self.shared_key)
+                    
+                    # 解析格式: FROM:源ID|消息内容
+                    if payload.startswith("FROM:"):
+                        from_part = payload[5:]
+                        if "|" in from_part:
+                            source_id, message = from_part.split("|", 1)
+                            print(f"\n[收到消息] {source_id}: {message}")
+                            print("VPN> ", end="", flush=True)
+                        else:
+                            print(f"\n[收到消息] {from_part}")
+                            print("VPN> ", end="", flush=True)
+                            
+                elif data.get("type") == "ACK":
+                    # ACK确认
+                    pass
+                    
+            except socket.timeout:
+                continue
+            except Exception as e:
+                if self.connected:
+                    self.logger.error(f"接收消息异常: {e}")
                 break
 
     def disconnect(self):

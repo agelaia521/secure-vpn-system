@@ -163,11 +163,12 @@ class VPNServer:
                 f"共享密钥: {shared_key.hex()[:16]}..."
             )
 
-            # 保存会话
+            # 保存会话（包含socket引用用于转发）
             with self.session_lock:
                 self.active_sessions[session_id] = {
                     "client_id": client_id,
                     "client_addr": client_addr,
+                    "client_socket": client_socket,
                     "shared_key": shared_key,
                     "dh_private_key": dh_priv,
                     "connected_at": time.time(),
@@ -202,7 +203,6 @@ class VPNServer:
                     break
 
                 if data.get("type") == "DATA":
-                    # 解密数据
                     try:
                         packet = data["packet"]
                         payload = self.tunnel.decapsulate(packet, shared_key)
@@ -214,13 +214,45 @@ class VPNServer:
                             f"[会话 {session_id}] 收到数据: "
                             f"{self.tunnel.get_packet_info(packet)}"
                         )
-                        self.logger.info(f"[会话 {session_id}] 解密内容: {payload[:50]}...")
 
-                        # 回显确认
+                        # 解析消息格式: "目标ID|消息内容"
+                        if "|" in payload:
+                            target_id, message = payload.split("|", 1)
+                            target_id = target_id.strip()
+                            message = message.strip()
+                            
+                            self.logger.info(f"[会话 {session_id}] 转发消息到 {target_id}: {message[:50]}...")
+                            
+                            # 查找目标客户端（支持session_id和client_id两种格式）
+                            target_session = None
+                            with self.session_lock:
+                                for sid, info in self.active_sessions.items():
+                                    # 支持: session_id、Client-session_id、原始client_id
+                                    client_id = info["client_id"]
+                                    if (sid == target_id or 
+                                        client_id == target_id or 
+                                        f"Client-{sid}" == target_id):
+                                        target_session = sid
+                                        break
+                            
+                            if target_session and target_session != session_id:
+                                # 转发消息
+                                self._forward_message(target_session, session_id, message)
+                                self.logger.info(f"[会话 {session_id}] 消息已转发")
+                            elif target_session == session_id:
+                                self.logger.warning(f"[会话 {session_id}] 不能发送消息给自己")
+                            else:
+                                self.logger.warning(f"[会话 {session_id}] 目标客户端 {target_id} 不存在")
+                            
+                            ack_status = "FORWARDED" if target_session else "TARGET_NOT_FOUND"
+                        else:
+                            self.logger.info(f"[会话 {session_id}] 解密内容: {payload[:50]}...")
+                            ack_status = "RECEIVED"
+
                         ack = {
                             "type": "ACK",
                             "sequence": packet["header"]["sequence"],
-                            "status": "OK"
+                            "status": ack_status
                         }
                         self._send_json(client_socket, ack)
 
@@ -234,6 +266,43 @@ class VPNServer:
             except Exception as e:
                 self.logger.error(f"[会话 {session_id}] 数据接收异常: {e}")
                 break
+
+    def _forward_message(self, target_session_id: str, source_session_id: str, message: str):
+        """
+        转发消息到目标客户端
+        :param target_session_id: 目标会话ID
+        :param source_session_id: 源会话ID
+        :param message: 消息内容
+        """
+        with self.session_lock:
+            if target_session_id not in self.active_sessions:
+                return
+            
+            target_info = self.active_sessions[target_session_id]
+            source_info = self.active_sessions.get(source_session_id, {})
+            
+            # 重新封装消息，添加源信息
+            forwarded_payload = f"FROM:{source_info.get('client_id', source_session_id)}|{message}"
+            
+            # 使用目标会话的密钥重新加密
+            packet = self.tunnel.encapsulate(
+                payload=forwarded_payload,
+                src_ip="10.0.0.1",
+                dst_ip="10.0.0.3",
+                protocol="TCP",
+                session_key=target_info["shared_key"]
+            )
+            
+            # 发送转发消息
+            try:
+                forward_data = {
+                    "type": "FORWARD",
+                    "packet": packet
+                }
+                self._send_json(target_info["client_socket"], forward_data)
+                self.logger.info(f"[会话 {target_session_id}] 转发消息已发送")
+            except Exception as e:
+                self.logger.error(f"[会话 {target_session_id}] 转发消息失败: {e}")
 
     def _send_json(self, sock: socket.socket, data: dict):
         """发送JSON数据"""
